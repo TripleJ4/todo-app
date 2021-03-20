@@ -1,12 +1,11 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Layout, Typography, Input, Form, List, Checkbox } from "antd"
-import { findSourceMap } from "node:module"
 
 const { Sider, Content } = Layout
 const { Title } = Typography
 
 type Todo = {
-  id: string
+  _id: string
   text: string
   completed: boolean
 }
@@ -15,27 +14,34 @@ const Index = () => {
   const [form] = Form.useForm()
   const [todos, setTodos] = useState<Array<Todo>>([])
 
-  const onFinish = (values: { todo: string }) => {
-    setTodos(
-      todos.concat([
-        {
-          id: `${values.todo}-${new Date().getTime()}`,
-          text: values.todo,
-          completed: false,
-        },
-      ])
-    )
+  useEffect(() => {
+    const fetchTodos = async () => {
+      const response = await fetch("/api/todos", { method: "GET" })
+      const todos = await response.json()
+      setTodos(todos)
+    }
+    fetchTodos()
+  }, [])
+
+  const onFinish = async (values: { text: string }) => {
+    const response = await fetch("/api/todos", {
+      method: "POST",
+      body: JSON.stringify({ text: values.text, completed: false }),
+    })
+    const todo = await response.json()
+    setTodos(todos.concat([todo]))
     form.resetFields()
   }
 
-  const deleteTodo = (id: string) => {
-    setTimeout(() => {
-      const index = todos.findIndex((todo) => todo.id === id)
+  const deleteTodo = async (_id: string) => {
+    const response = await fetch(`/api/todos/${_id}`, { method: "DELETE" })
+    if (response.ok) {
+      const index = todos.findIndex((todo) => todo._id === _id)
       if (index !== -1) {
         todos.splice(index, 1)
         setTodos(todos)
       }
-    }, 1000)
+    }
   }
 
   return (
@@ -48,7 +54,7 @@ const Index = () => {
         <div className="flex flex-col items-center max-w-xl mx-auto">
           <Title level={1}>Today</Title>
           <Form form={form} onFinish={onFinish} className="w-full">
-            <Form.Item name="todo">
+            <Form.Item name="text">
               <Input placeholder="What do you want to do today?" />
             </Form.Item>
           </Form>
@@ -59,13 +65,13 @@ const Index = () => {
             dataSource={todos}
             renderItem={(todo, i) => {
               return (
-                <List.Item key={todo.id}>
+                <List.Item key={todo._id}>
                   <Checkbox
                     checked={todos[i].completed}
                     onChange={(e) => {
                       if (e.target.checked) {
                         todos[i].completed = true
-                        deleteTodo(todo.id)
+                        deleteTodo(todo._id)
                       } else {
                         todos[i].completed = false
                       }

@@ -1,3 +1,6 @@
+// https://developer.mongodb.com/how-to/nextjs-with-mongodb/
+// https://github.com/vercel/next.js/tree/canary/examples/with-mongodb
+
 import { MongoClient } from "mongodb"
 
 const { MONGODB_URI, MONGODB_DB } = process.env
