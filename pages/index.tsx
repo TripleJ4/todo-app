@@ -1,47 +1,26 @@
-import { useState, useEffect } from "react"
+import { useQuery, useMutation, useQueryClient } from "react-query"
+import { getTodos, postTodo, deleteTodo } from "api/todos"
 import { Layout, Typography, Input, Form, List, Checkbox } from "antd"
 
 const { Sider, Content } = Layout
 const { Title } = Typography
 
-type Todo = {
-  _id: string
-  text: string
-  completed: boolean
-}
-
 const Index = () => {
+  const queryClient = useQueryClient()
+  const query = useQuery("todos", getTodos)
+  const todos = query.data
+  // TODO don't invalidate bc we already have new todo
+  const postTodoMutation = useMutation(postTodo, {
+    onSuccess: () => queryClient.invalidateQueries("todos"),
+  })
+  const deleteTodoMutation = useMutation(deleteTodo, {
+    onSuccess: () => queryClient.invalidateQueries("todos"),
+  })
   const [form] = Form.useForm()
-  const [todos, setTodos] = useState<Array<Todo>>([])
 
-  useEffect(() => {
-    const fetchTodos = async () => {
-      const response = await fetch("/api/todos", { method: "GET" })
-      const todos = await response.json()
-      setTodos(todos)
-    }
-    fetchTodos()
-  }, [])
-
-  const onFinish = async (values: { text: string }) => {
-    const response = await fetch("/api/todos", {
-      method: "POST",
-      body: JSON.stringify({ text: values.text, completed: false }),
-    })
-    const todo = await response.json()
-    setTodos(todos.concat([todo]))
+  const onFinish = (values: { text: string }) => {
+    postTodoMutation.mutate({ text: values.text, completed: false })
     form.resetFields()
-  }
-
-  const deleteTodo = async (_id: string) => {
-    const response = await fetch(`/api/todos/${_id}`, { method: "DELETE" })
-    if (response.ok) {
-      const index = todos.findIndex((todo) => todo._id === _id)
-      if (index !== -1) {
-        todos.splice(index, 1)
-        setTodos(todos)
-      }
-    }
   }
 
   return (
@@ -70,12 +49,8 @@ const Index = () => {
                     checked={todos[i].completed}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        todos[i].completed = true
-                        deleteTodo(todo._id)
-                      } else {
-                        todos[i].completed = false
+                        deleteTodoMutation.mutate(todo._id)
                       }
-                      setTodos(todos.slice())
                     }}
                   >
                     {todo.text}

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next"
 import { ObjectID } from "mongodb"
 import { connectToDatabase } from "utils/mongodb"
+import { tryCreateTodo } from "interfaces/ITodo"
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   const method = req.method
@@ -16,13 +17,18 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
   switch (method) {
     case "GET":
       const todo = await db.collection("todos").findOne({ _id })
-      return res.status(200).json(todo)
+      const response = tryCreateTodo(todo)
+      if (!response.success) {
+        return res.status(400).end("Todo is not valid")
+      }
+      return res.status(200).json(response.payload)
 
     case "PUT":
       // TODO: Implement PUT request
       return res.status(200).end()
 
     case "DELETE":
+      // TODO: Check if this actually worked
       await db.collection("todos").deleteOne({ _id })
       return res.status(204).end()
 
