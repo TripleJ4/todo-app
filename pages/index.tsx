@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "react-query"
-import { getTodos, postTodo, deleteTodo } from "api/todos"
-import { Layout, Typography, Input, Form, List, Checkbox } from "antd"
+import { getTodos, postTodo, patchTodo, deleteTodo } from "api/todos"
+
+import { Layout, Typography, Input, Form, List } from "antd"
+import Todo from "components/molecules/Todo"
 
 const { Sider, Content } = Layout
 const { Title } = Typography
@@ -14,6 +16,9 @@ const Index = () => {
     onSuccess: () => queryClient.invalidateQueries("todos"),
   })
   const deleteTodoMutation = useMutation(deleteTodo, {
+    onSuccess: () => queryClient.invalidateQueries("todos"),
+  })
+  const patchTodoMutation = useMutation(patchTodo, {
     onSuccess: () => queryClient.invalidateQueries("todos"),
   })
   const [form] = Form.useForm()
@@ -42,20 +47,19 @@ const Index = () => {
             size="large"
             bordered
             dataSource={todos}
-            renderItem={(todo, i) => {
+            renderItem={(todo) => {
               return (
-                <List.Item key={todo._id}>
-                  <Checkbox
-                    checked={todos[i].completed}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        deleteTodoMutation.mutate(todo._id)
-                      }
-                    }}
-                  >
-                    {todo.text}
-                  </Checkbox>
-                </List.Item>
+                <Todo
+                  todo={todo}
+                  onComplete={() => deleteTodoMutation.mutate(todo._id)}
+                  onEdit={(text) =>
+                    patchTodoMutation.mutate({
+                      _id: todo._id,
+                      data: { text: text },
+                    })
+                  }
+                  key={todo._id}
+                />
               )
             }}
           />
