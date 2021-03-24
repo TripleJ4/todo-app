@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "react-query"
-import { getTodos, postTodo, patchTodo, deleteTodo } from "api/todos"
+import { getTodos, postTodo, patchTodo, deleteTodo } from "client/todos"
 
 import { Layout, Typography, Input, Form, List } from "antd"
 import Todo from "components/molecules/Todo"
