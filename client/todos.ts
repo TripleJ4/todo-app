@@ -25,6 +25,17 @@ export async function postTodo(todo: ITodo) {
   return newTodo
 }
 
+export async function getTodo(_id: string) {
+  const response = await fetch(`/api/todos/${_id}`, { method: "GET" })
+  if (!response.ok) {
+    // TODO: Throw actual error from response
+    throw new Error("Network response was not ok")
+  }
+
+  const todo: ITodo = await response.json()
+  return todo
+}
+
 export async function patchTodo({ _id, data }: { _id: string; data: any }) {
   const response = await fetch(`api/todos/${_id}`, {
     method: "PATCH",

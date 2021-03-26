@@ -38,7 +38,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     case "PATCH":
       const result = await todosCollection.updateOne(
         { _id },
-        { $set: JSON.parse(req.body) }
+        { $setOnInsert: JSON.parse(req.body) }
       )
       const newTodo: ITodo = await todosCollection.findOne({
         _id: result.upsertedId || _id,

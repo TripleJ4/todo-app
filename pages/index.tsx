@@ -1,5 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from "react-query"
+import { QueryClient, useQuery, useMutation, useQueryClient } from "react-query"
+import { dehydrate } from "react-query/hydration"
 import { getTodos, postTodo, patchTodo, deleteTodo } from "client/todos"
+import { getTodos as getTodosServer } from "server/todos"
+import ITodo from "interfaces/ITodo"
 
 import { Layout, Typography, Input, Form, List } from "antd"
 import Todo from "components/molecules/Todo"
@@ -9,11 +12,25 @@ const { Title } = Typography
 
 const Index = () => {
   const queryClient = useQueryClient()
-  const query = useQuery("todos", getTodos)
-  const todos = query.data
-  // TODO don't invalidate bc we already have new todo
+  const { data: todos } = useQuery("todos", getTodos)
+
+  // TODO update with property typescript usage
+  // https://react-query.tanstack.com/examples/optimistic-updates-typescript
   const postTodoMutation = useMutation(postTodo, {
-    onSuccess: () => queryClient.invalidateQueries("todos"),
+    onMutate: async (newTodo) => {
+      await queryClient.cancelQueries("todos")
+      const previousTodos = queryClient.getQueryData<ITodo[]>("todos")
+      queryClient.setQueryData<ITodo[]>("todos", (old) => [...old, newTodo])
+      return { previousTodos }
+    },
+    onError: (err, newTodo, context: { previousTodos?: ITodo[] }) => {
+      if (context?.previousTodos) {
+        queryClient.setQueryData<ITodo[]>("todos", context.previousTodos)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries("todos")
+    },
   })
   const deleteTodoMutation = useMutation(deleteTodo, {
     onSuccess: () => queryClient.invalidateQueries("todos"),
@@ -67,6 +84,18 @@ const Index = () => {
       </Content>
     </Layout>
   )
+}
+
+export async function getServerSideProps() {
+  const queryClient = new QueryClient()
+
+  await queryClient.prefetchQuery("todos", getTodosServer)
+
+  return {
+    props: {
+      dehydratedState: dehydrate(queryClient),
+    },
+  }
 }
 
 export default Index

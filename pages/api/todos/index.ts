@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next"
 import { connectToDatabase } from "utils/mongodb"
 import ITodo, { tryCreateTodo } from "interfaces/ITodo"
+import {getTodos} from "server/todos"
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   const method = req.method
@@ -9,23 +10,13 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(405).end(`Method ${method} Not Allowed`)
   }
 
-  const { db } = await connectToDatabase()
-
   switch (method) {
     case "GET":
-      const todos = await db.collection("todos").find({}).toArray()
-
-      let validTodos: ITodo[] = []
-      todos.forEach((todo: ITodo) => {
-        const response = tryCreateTodo(todo)
-        if (response.success) {
-          validTodos.push(response.payload)
-        }
-      })
-
-      return res.status(200).json(validTodos)
+      const todos = await getTodos()
+      return res.status(200).json(todos)
 
     case "POST":
+      const { db } = await connectToDatabase()
       const newTodo = JSON.parse(req.body)
 
       const response = tryCreateTodo(newTodo)
