@@ -3,9 +3,12 @@ import type { AppProps } from "next/app"
 import { QueryClient, QueryClientProvider } from "react-query"
 import { Hydrate } from "react-query/hydration"
 import { ReactQueryDevtools } from "react-query/devtools"
+import RealmAppProvider from "components/providers/RealmAppProvider"
 
 import "antd/dist/antd.css"
 import "styles/global.css"
+
+export const APP_ID = "application-0-ukbka"
 
 // https://react-query.tanstack.com/examples/nextjs
 function MyApp({ Component, pageProps }: AppProps) {
@@ -15,12 +18,14 @@ function MyApp({ Component, pageProps }: AppProps) {
   }
 
   return (
-    <QueryClientProvider client={queryClientRef.current}>
-      <Hydrate state={pageProps.dehydratedState}>
-        <Component {...pageProps} />
-      </Hydrate>
-      <ReactQueryDevtools />
-    </QueryClientProvider>
+    <RealmAppProvider appId={APP_ID}>
+      <QueryClientProvider client={queryClientRef.current}>
+        <Hydrate state={pageProps.dehydratedState}>
+          <Component {...pageProps} />
+        </Hydrate>
+        <ReactQueryDevtools />
+      </QueryClientProvider>
+    </RealmAppProvider>
   )
 }
 

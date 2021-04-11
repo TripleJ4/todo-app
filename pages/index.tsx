@@ -1,101 +1,162 @@
+import { useState } from "react"
 import { QueryClient, useQuery, useMutation, useQueryClient } from "react-query"
 import { dehydrate } from "react-query/hydration"
 import { getTodos, postTodo, patchTodo, deleteTodo } from "client/todos"
 import { getTodos as getTodosServer } from "server/todos"
 import ITodo from "interfaces/ITodo"
+import * as Realm from "realm-web"
+import useRealmApp from "hooks/useRealmApp"
 
-import { Layout, Typography, Input, Form, List } from "antd"
+import { Layout, Typography, Input, Form, List, Button } from "antd"
 import Todo from "components/molecules/Todo"
+import LoginForm from "components/forms/LoginForm"
+import CreateAccountForm from "components/forms/CreateAccountForm"
 
 const { Sider, Content } = Layout
 const { Title } = Typography
 
+type FormType = "login" | "create-account"
+
 const Index = () => {
-  const queryClient = useQueryClient()
-  const { data: todos } = useQuery("todos", getTodos)
+  const app = useRealmApp()
+  const [form, setForm] = useState<FormType>("login")
 
-  // TODO update with property typescript usage
-  // https://react-query.tanstack.com/examples/optimistic-updates-typescript
-  const postTodoMutation = useMutation(postTodo, {
-    onMutate: async (newTodo) => {
-      await queryClient.cancelQueries("todos")
-      const previousTodos = queryClient.getQueryData<ITodo[]>("todos")
-      queryClient.setQueryData<ITodo[]>("todos", (old) => [...old, newTodo])
-      return { previousTodos }
-    },
-    onError: (err, newTodo, context: { previousTodos?: ITodo[] }) => {
-      if (context?.previousTodos) {
-        queryClient.setQueryData<ITodo[]>("todos", context.previousTodos)
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries("todos")
-    },
-  })
-  const deleteTodoMutation = useMutation(deleteTodo, {
-    onSuccess: () => queryClient.invalidateQueries("todos"),
-  })
-  const patchTodoMutation = useMutation(patchTodo, {
-    onSuccess: () => queryClient.invalidateQueries("todos"),
-  })
-  const [form] = Form.useForm()
+  const handleLogin = async ({ email, password }) => {
+    try {
+      await app.logIn(Realm.Credentials.emailPassword(email, password))
+    } catch (err) {
+      console.warn(err)
+    }
+  }
 
-  const onFinish = (values: { text: string }) => {
-    postTodoMutation.mutate({ text: values.text, completed: false })
-    form.resetFields()
+  const handleRegistrationAndLogin = async ({ email, password }) => {
+    try {
+      await app.emailPasswordAuth.registerUser(email, password)
+      return await app.logIn(Realm.Credentials.emailPassword(email, password))
+    } catch (err) {
+      console.warn(err)
+    }
+  }
+
+  if (!app.currentUser) {
+    return (
+      <div className="max-w-md mx-auto shadow-lg p-8 m-8">
+        {form === "login" && (
+          <>
+            <Title>Log In</Title>
+            <LoginForm onFinish={handleLogin} />
+            <Button type="link" onClick={() => setForm("create-account")}>
+              Create account
+            </Button>
+          </>
+        )}
+        {form === "create-account" && (
+          <>
+            <Title>Create Account</Title>
+            <CreateAccountForm onFinish={handleRegistrationAndLogin} />
+            <Button type="link" onClick={() => setForm("login")}>
+              Log In
+            </Button>
+          </>
+        )}
+      </div>
+    )
   }
 
   return (
-    <Layout className="min-h-screen">
-      <Sider width={350} collapsible>
-        Sider
-      </Sider>
-
-      <Content className="bg-gray-100 w-full min-h-screen p-6">
-        <div className="flex flex-col items-center max-w-xl mx-auto">
-          <Title level={1}>Today</Title>
-          <Form form={form} onFinish={onFinish} className="w-full">
-            <Form.Item name="text">
-              <Input placeholder="What do you want to do today?" />
-            </Form.Item>
-          </Form>
-          <List
-            className="w-full"
-            size="large"
-            bordered
-            dataSource={todos}
-            renderItem={(todo) => {
-              return (
-                <Todo
-                  todo={todo}
-                  onComplete={() => deleteTodoMutation.mutate(todo._id)}
-                  onEdit={(text) =>
-                    patchTodoMutation.mutate({
-                      _id: todo._id,
-                      data: { text: text },
-                    })
-                  }
-                  key={todo._id}
-                />
-              )
-            }}
-          />
-        </div>
-      </Content>
-    </Layout>
+    <>
+      <div>Logged In</div>
+      <Button onClick={() => app.logOut()}>Log Out</Button>
+    </>
   )
 }
 
-export async function getServerSideProps() {
-  const queryClient = new QueryClient()
+// const Index = () => {
+//   const queryClient = useQueryClient()
+//   const { data: todos } = useQuery("todos", getTodos)
 
-  await queryClient.prefetchQuery("todos", getTodosServer)
+//   // TODO update with property typescript usage
+//   // https://react-query.tanstack.com/examples/optimistic-updates-typescript
+//   const postTodoMutation = useMutation(postTodo, {
+//     onMutate: async (newTodo) => {
+//       await queryClient.cancelQueries("todos")
+//       const previousTodos = queryClient.getQueryData<ITodo[]>("todos")
+//       queryClient.setQueryData<ITodo[]>("todos", (old) => [...old, newTodo])
+//       return { previousTodos }
+//     },
+//     onError: (err, newTodo, context: { previousTodos?: ITodo[] }) => {
+//       if (context?.previousTodos) {
+//         queryClient.setQueryData<ITodo[]>("todos", context.previousTodos)
+//       }
+//     },
+//     onSettled: () => {
+//       queryClient.invalidateQueries("todos")
+//     },
+//   })
+//   const deleteTodoMutation = useMutation(deleteTodo, {
+//     onSuccess: () => queryClient.invalidateQueries("todos"),
+//   })
+//   const patchTodoMutation = useMutation(patchTodo, {
+//     onSuccess: () => queryClient.invalidateQueries("todos"),
+//   })
+//   const [form] = Form.useForm()
 
-  return {
-    props: {
-      dehydratedState: dehydrate(queryClient),
-    },
-  }
-}
+//   const onFinish = (values: { text: string }) => {
+//     postTodoMutation.mutate({ text: values.text, completed: false })
+//     form.resetFields()
+//   }
+
+//   return (
+//     <Layout className="min-h-screen">
+//       <Sider width={350} collapsible>
+//         Sider
+//       </Sider>
+
+//       <Content className="bg-gray-100 w-full min-h-screen p-6">
+//         <div className="flex flex-col items-center max-w-xl mx-auto">
+//           <Title level={1}>Today</Title>
+//           <Form form={form} onFinish={onFinish} className="w-full">
+//             <Form.Item name="text">
+//               <Input placeholder="What do you want to do today?" />
+//             </Form.Item>
+//           </Form>
+//           <List
+//             className="w-full"
+//             size="large"
+//             bordered
+//             dataSource={todos}
+//             renderItem={(todo) => {
+//               return (
+//                 <Todo
+//                   todo={todo}
+//                   onComplete={() => deleteTodoMutation.mutate(todo._id)}
+//                   onEdit={(text) =>
+//                     patchTodoMutation.mutate({
+//                       _id: todo._id,
+//                       data: { text: text },
+//                     })
+//                   }
+//                   key={todo._id}
+//                 />
+//               )
+//             }}
+//           />
+//         </div>
+//       </Content>
+//     </Layout>
+//   )
+// }
+
+// export async function getServerSideProps() {
+//   const queryClient = new QueryClient()
+
+//   await queryClient.prefetchQuery("todos", getTodosServer)
+
+//   return {
+//     props: {
+//       dehydratedState: dehydrate(queryClient),
+//     },
+//   }
+// }
 
 export default Index
