@@ -22,21 +22,49 @@ const Index = () => {
   const mongodb = app.currentUser?.mongoClient("mongodb-atlas")
   const todosCollection = mongodb?.db("development").collection("todos")
   const { data: todos } = useQuery("todos", async () => {
-    return await todosCollection.find({})
+    const todos: ITodo[] = await todosCollection.find({})
+    return todos
   })
-  const postTodoMutation = useMutation(
-    async (todo: any) => {
-      await todosCollection.insertOne(todo)
+  const insertTodoMutation = useMutation(
+    async (todo: ITodo) => {
+      const result = await todosCollection.insertOne(todo)
+      // This new todo isn't actually being used for anything
+      const newTodo: ITodo[] = await todosCollection.find({
+        _id: result.insertedId,
+      })
+      console.log("newTodo: ", newTodo[0])
+      return newTodo[0]
     },
     {
-      onSuccess: () => {
+      onMutate: async (newTodo) => {
+        await queryClient.cancelQueries("todos")
+        const previousTodos = queryClient.getQueryData<ITodo[]>("todos")
+        queryClient.setQueryData<ITodo[]>("todos", (old) => [...old, newTodo])
+        return { previousTodos }
+      },
+      onError: (err, newTodo, context: { previousTodos?: ITodo[] }) => {
+        if (context?.previousTodos) {
+          queryClient.setQueryData<ITodo[]>("todos", context.previousTodos)
+        }
+      },
+      onSettled: () => {
         queryClient.invalidateQueries("todos")
       },
     }
   )
   const deleteTodoMutation = useMutation(
     async (id: string) => {
-      await todosCollection.deleteOne({ _id: id })
+      const deletedTodo = await todosCollection.deleteOne({ _id: id })
+      console.log(deletedTodo)
+      return deletedTodo
+    },
+    {
+      onSuccess: () => queryClient.invalidateQueries("todos"),
+    }
+  )
+  const patchTodoMutation = useMutation(
+    async ({ _id, data }: { _id: string; data: any }) => {
+      todosCollection.updateOne({ _id }, { $set: data })
     },
     {
       onSuccess: () => queryClient.invalidateQueries("todos"),
@@ -49,10 +77,9 @@ const Index = () => {
     return <AuthForms />
   }
 
-  console.log(app.currentUser)
-
   const onFinish = (values: { text: string }) => {
-    postTodoMutation.mutate({
+    insertTodoMutation.mutate({
+      // TODO: Include generated _id
       user_id: app.currentUser.id,
       text: values.text,
       completed: false,
@@ -84,12 +111,12 @@ const Index = () => {
                 <Todo
                   todo={todo}
                   onComplete={() => deleteTodoMutation.mutate(todo._id)}
-                  // onEdit={(text) =>
-                  //   patchTodoMutation.mutate({
-                  //     _id: todo._id,
-                  //     data: { text: text },
-                  //   })
-                  // }
+                  onEdit={(text) =>
+                    patchTodoMutation.mutate({
+                      _id: todo._id,
+                      data: { text: text },
+                    })
+                  }
                   key={todo._id}
                 />
               )
@@ -108,20 +135,20 @@ const Index = () => {
 //   // TODO update with property typescript usage
 //   // https://react-query.tanstack.com/examples/optimistic-updates-typescript
 //   const postTodoMutation = useMutation(postTodo, {
-//     onMutate: async (newTodo) => {
-//       await queryClient.cancelQueries("todos")
-//       const previousTodos = queryClient.getQueryData<ITodo[]>("todos")
-//       queryClient.setQueryData<ITodo[]>("todos", (old) => [...old, newTodo])
-//       return { previousTodos }
-//     },
-//     onError: (err, newTodo, context: { previousTodos?: ITodo[] }) => {
-//       if (context?.previousTodos) {
-//         queryClient.setQueryData<ITodo[]>("todos", context.previousTodos)
-//       }
-//     },
-//     onSettled: () => {
-//       queryClient.invalidateQueries("todos")
-//     },
+// onMutate: async (newTodo) => {
+//   await queryClient.cancelQueries("todos")
+//   const previousTodos = queryClient.getQueryData<ITodo[]>("todos")
+//   queryClient.setQueryData<ITodo[]>("todos", (old) => [...old, newTodo])
+//   return { previousTodos }
+// },
+// onError: (err, newTodo, context: { previousTodos?: ITodo[] }) => {
+//   if (context?.previousTodos) {
+//     queryClient.setQueryData<ITodo[]>("todos", context.previousTodos)
+//   }
+// },
+// onSettled: () => {
+//   queryClient.invalidateQueries("todos")
+// },
 //   })
 //   const deleteTodoMutation = useMutation(deleteTodo, {
 //     onSuccess: () => queryClient.invalidateQueries("todos"),

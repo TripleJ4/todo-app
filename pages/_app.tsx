@@ -18,14 +18,14 @@ function MyApp({ Component, pageProps }: AppProps) {
   }
 
   return (
-    <RealmAppProvider appId={APP_ID}>
-      <QueryClientProvider client={queryClientRef.current}>
+    <QueryClientProvider client={queryClientRef.current}>
+      <RealmAppProvider appId={APP_ID}>
         <Hydrate state={pageProps.dehydratedState}>
           <Component {...pageProps} />
         </Hydrate>
         <ReactQueryDevtools />
-      </QueryClientProvider>
-    </RealmAppProvider>
+      </RealmAppProvider>
+    </QueryClientProvider>
   )
 }
 

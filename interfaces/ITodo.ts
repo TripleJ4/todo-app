@@ -6,6 +6,7 @@ import { isString, isBoolean } from "utils/typescript"
 
 interface ITodo {
   _id?: string
+  user_id: string
   text: string
   completed: boolean
 }
