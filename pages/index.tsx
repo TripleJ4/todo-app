@@ -6,68 +6,98 @@ import { getTodos as getTodosServer } from "server/todos"
 import ITodo from "interfaces/ITodo"
 import * as Realm from "realm-web"
 import useRealmApp from "hooks/useRealmApp"
+import useTodos from "hooks/useTodos"
+
+import AuthForms from "components/organisms/AuthForms"
 
 import { Layout, Typography, Input, Form, List, Button } from "antd"
 import Todo from "components/molecules/Todo"
-import LoginForm from "components/forms/LoginForm"
-import CreateAccountForm from "components/forms/CreateAccountForm"
 
 const { Sider, Content } = Layout
 const { Title } = Typography
 
-type FormType = "login" | "create-account"
-
 const Index = () => {
   const app = useRealmApp()
-  const [form, setForm] = useState<FormType>("login")
-
-  const handleLogin = async ({ email, password }) => {
-    try {
-      await app.logIn(Realm.Credentials.emailPassword(email, password))
-    } catch (err) {
-      console.warn(err)
+  const queryClient = useQueryClient()
+  const mongodb = app.currentUser?.mongoClient("mongodb-atlas")
+  const todosCollection = mongodb?.db("development").collection("todos")
+  const { data: todos } = useQuery("todos", async () => {
+    return await todosCollection.find({})
+  })
+  const postTodoMutation = useMutation(
+    async (todo: any) => {
+      await todosCollection.insertOne(todo)
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("todos")
+      },
     }
-  }
-
-  const handleRegistrationAndLogin = async ({ email, password }) => {
-    try {
-      await app.emailPasswordAuth.registerUser(email, password)
-      return await app.logIn(Realm.Credentials.emailPassword(email, password))
-    } catch (err) {
-      console.warn(err)
+  )
+  const deleteTodoMutation = useMutation(
+    async (id: string) => {
+      await todosCollection.deleteOne({ _id: id })
+    },
+    {
+      onSuccess: () => queryClient.invalidateQueries("todos"),
     }
-  }
+  )
+
+  const [form] = Form.useForm()
 
   if (!app.currentUser) {
-    return (
-      <div className="max-w-md mx-auto shadow-lg p-8 m-8">
-        {form === "login" && (
-          <>
-            <Title>Log In</Title>
-            <LoginForm onFinish={handleLogin} />
-            <Button type="link" onClick={() => setForm("create-account")}>
-              Create account
-            </Button>
-          </>
-        )}
-        {form === "create-account" && (
-          <>
-            <Title>Create Account</Title>
-            <CreateAccountForm onFinish={handleRegistrationAndLogin} />
-            <Button type="link" onClick={() => setForm("login")}>
-              Log In
-            </Button>
-          </>
-        )}
-      </div>
-    )
+    return <AuthForms />
+  }
+
+  console.log(app.currentUser)
+
+  const onFinish = (values: { text: string }) => {
+    postTodoMutation.mutate({
+      user_id: app.currentUser.id,
+      text: values.text,
+      completed: false,
+    })
+    form.resetFields()
   }
 
   return (
-    <>
-      <div>Logged In</div>
-      <Button onClick={() => app.logOut()}>Log Out</Button>
-    </>
+    <Layout className="min-h-screen">
+      <Sider width={350} collapsible>
+        <Button onClick={() => app.logOut()}>Log Out</Button>
+      </Sider>
+
+      <Content className="bg-gray-100 w-full min-h-screen p-6">
+        <div className="flex flex-col items-center max-w-xl mx-auto">
+          <Title level={1}>Today</Title>
+          <Form form={form} onFinish={onFinish} className="w-full">
+            <Form.Item name="text">
+              <Input placeholder="What do you want to do today?" />
+            </Form.Item>
+          </Form>
+          <List
+            className="w-full"
+            size="large"
+            bordered
+            dataSource={todos}
+            renderItem={(todo) => {
+              return (
+                <Todo
+                  todo={todo}
+                  onComplete={() => deleteTodoMutation.mutate(todo._id)}
+                  // onEdit={(text) =>
+                  //   patchTodoMutation.mutate({
+                  //     _id: todo._id,
+                  //     data: { text: text },
+                  //   })
+                  // }
+                  key={todo._id}
+                />
+              )
+            }}
+          />
+        </div>
+      </Content>
+    </Layout>
   )
 }
 
@@ -107,43 +137,43 @@ const Index = () => {
 //   }
 
 //   return (
-//     <Layout className="min-h-screen">
-//       <Sider width={350} collapsible>
-//         Sider
-//       </Sider>
+// <Layout className="min-h-screen">
+//   <Sider width={350} collapsible>
+//     Sider
+//   </Sider>
 
-//       <Content className="bg-gray-100 w-full min-h-screen p-6">
-//         <div className="flex flex-col items-center max-w-xl mx-auto">
-//           <Title level={1}>Today</Title>
-//           <Form form={form} onFinish={onFinish} className="w-full">
-//             <Form.Item name="text">
-//               <Input placeholder="What do you want to do today?" />
-//             </Form.Item>
-//           </Form>
-//           <List
-//             className="w-full"
-//             size="large"
-//             bordered
-//             dataSource={todos}
-//             renderItem={(todo) => {
-//               return (
-//                 <Todo
-//                   todo={todo}
-//                   onComplete={() => deleteTodoMutation.mutate(todo._id)}
-//                   onEdit={(text) =>
-//                     patchTodoMutation.mutate({
-//                       _id: todo._id,
-//                       data: { text: text },
-//                     })
-//                   }
-//                   key={todo._id}
-//                 />
-//               )
-//             }}
-//           />
-//         </div>
-//       </Content>
-//     </Layout>
+//   <Content className="bg-gray-100 w-full min-h-screen p-6">
+//     <div className="flex flex-col items-center max-w-xl mx-auto">
+//       <Title level={1}>Today</Title>
+//       <Form form={form} onFinish={onFinish} className="w-full">
+//         <Form.Item name="text">
+//           <Input placeholder="What do you want to do today?" />
+//         </Form.Item>
+//       </Form>
+//       <List
+//         className="w-full"
+//         size="large"
+//         bordered
+//         dataSource={todos}
+//         renderItem={(todo) => {
+//           return (
+//             <Todo
+//               todo={todo}
+//               onComplete={() => deleteTodoMutation.mutate(todo._id)}
+//               onEdit={(text) =>
+//                 patchTodoMutation.mutate({
+//                   _id: todo._id,
+//                   data: { text: text },
+//                 })
+//               }
+//               key={todo._id}
+//             />
+//           )
+//         }}
+//       />
+//     </div>
+//   </Content>
+// </Layout>
 //   )
 // }
 
