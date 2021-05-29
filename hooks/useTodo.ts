@@ -6,9 +6,8 @@ const useTodo = (_id: string) => {
   const todosCollection = useCollection("todos")
 
   return useQuery(["todos", _id], async () => {
-    const todos: ITodo[] = await todosCollection.find({ _id })
-    console.log("TODO: ", todos[0])
-    return todos[0]
+    const todo: ITodo = await todosCollection.findOne({ _id })
+    return todo
   })
 }
 

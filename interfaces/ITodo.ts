@@ -1,6 +1,8 @@
+import { ObjectId } from "bson"
+
 interface ITodo {
-  _id?: string
-  user_id: string
+  _id?: ObjectId
+  user_id?: string
   text: string
   completed: boolean
 }

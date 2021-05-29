@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "react-query"
 import { Hydrate } from "react-query/hydration"
 import { ReactQueryDevtools } from "react-query/devtools"
 import RealmAppProvider from "components/providers/RealmAppProvider"
+import DragDropContext from "components/providers/DragDropContext"
 
 import "antd/dist/antd.css"
 import "styles/global.css"
@@ -21,7 +22,9 @@ function MyApp({ Component, pageProps }: AppProps) {
     <QueryClientProvider client={queryClientRef.current}>
       <RealmAppProvider appId={APP_ID}>
         <Hydrate state={pageProps.dehydratedState}>
-          <Component {...pageProps} />
+          <DragDropContext>
+            <Component {...pageProps} />
+          </DragDropContext>
         </Hydrate>
         <ReactQueryDevtools />
       </RealmAppProvider>

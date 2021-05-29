@@ -1,0 +1,46 @@
+{
+    "title": "day",
+    "bsonType": "object",
+    "properties": {
+      "_id": {
+        "bsonType": "objectId"
+      },
+      "user_id": {
+        "bsonType": "string"
+      },
+      "date": {
+        "bsonType": "date"
+      },
+      "todos": {
+        "bsonType": "array",
+        "items": {
+          "bsonType": "object",
+          "properties": {
+              "_id": {
+                  "bsonType": "objectId"
+              },
+              "user_id": {
+                  "bsonType": "string"
+              },
+            "text": {
+              "bsonType": "string"
+            },
+            "completed": {
+              "bsonType": "bool"
+            }
+          },
+          "required": [
+              "_id",
+              "user_id",
+            "text",
+            "completed"
+          ]
+        }
+      }
+    },
+    "required": [
+      "user_id",
+      "date",
+      "todos"
+    ]
+  }
