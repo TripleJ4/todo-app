@@ -1,3 +1,5 @@
+import { ObjectId } from "bson"
+
 import useRealmApp from "hooks/useRealmApp"
 import useTodos from "hooks/useTodos"
 import useAddTodo from "hooks/useAddTodo"
@@ -29,6 +31,7 @@ const Index = () => {
   const onFinish = (values: { text: string }) => {
     addTodoMutation.mutate({
       // TODO: Include generated _id
+      _id: new ObjectId(),
       user_id: app.currentUser.id,
       text: values.text,
       completed: false,
